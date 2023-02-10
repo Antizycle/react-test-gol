@@ -1,0 +1,20 @@
+body {
+    background-color: #201010;
+    color: #dad0d0;
+}
+
+.App {
+    border: 1px solid #504545;
+    font-size: 2rem;
+    text-align: center;
+    margin: auto;
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    width: fit-content;
+    height: fit-content;
+}
+
+.App:hover {
+    background-color: #504545;
+    font-size: 3rem;
+}
