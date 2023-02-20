@@ -1,7 +1,10 @@
 import {buttons} from '../navItems.js';
 
-function Button({name, id, value, title, onClick, disabled, children}) {
-  if(name === 'Generate') disabled = false;
+function Button({name, id, value, title, onClick, isGen, isRun, children}) {
+  let disabled = isRun;
+  if (isGen && name === 'Stop') disabled = !isRun;
+  if (!isGen && name !== 'Generate') disabled = !isRun;
+
   return (
       <button name={name} id={id} value={value} 
           title={title} onClick={onClick}
@@ -11,7 +14,7 @@ function Button({name, id, value, title, onClick, disabled, children}) {
   );
 }
 
-export default function Buttons({disabled, onClick}) {
+export default function Buttons({isgenerated, isrunning, onClick}) {
   return (
       <ul className='nav__list' key='nav__btns'>
           {buttons.map((btn) => { return (
@@ -21,7 +24,8 @@ export default function Buttons({disabled, onClick}) {
                           value={btn.value}
                           title={btn.title}
                           onClick={onClick}
-                          disabled={disabled}
+                          isGen={isgenerated}
+                          isRun={isrunning}
                           >                            
                       {btn.lable}
                   </Button>

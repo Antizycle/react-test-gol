@@ -1,9 +1,4 @@
-// changelog:
-// 07-02-23:    some indentation and line breaking editing
-//              moved nav items and components into separate files
-//              removed unused variable ID in oneCycle function
-
-import {useState } from 'react';
+import { useState, useReducer } from 'react';
 import './life.css';
 import Header from './components/header.jsx';
 import Container from './components/container.jsx';
@@ -11,15 +6,18 @@ import Inputs from './components/inputs.jsx';
 import Buttons from './components/buttons.jsx';
 import HelpBtn from './components/helpbtn.jsx';
 import Dashboard from './components/dashboard.jsx';
-import Field from './components/field.jsx';
+import useInterval from './components/useinterval.js';
+
 
 export default function App() {
+    const initialArray = Array(10).fill(Array(10).fill('alive'));
     const [helpToggle, setHelpToggle] = useState(false);
     const [fieldParams, setFieldParams] = useState({sizeX: 10, sizeY: 10, randP: 10, evolS: 50});
-    const [fieldArray, setFieldArray] = useState(Array(10).fill(Array(10).fill('alive')));
     const [dashCounters, setDashCounters] = useState({gens: 0, deaths: 0, survs: 0, births: 0});
     const [isGenerated, setIsGenerated] = useState(false);
-    const [cycleIntervalId, setCycleIntervalId] = useState(0);
+    const [isRunning, setIsRunning] = useState(false);
+
+    const [fieldArray, dispatch] = useReducer(fieldReducer, initialArray);
 
     function onHelpClickHandler() {
         setHelpToggle(!helpToggle);
@@ -53,15 +51,24 @@ export default function App() {
 
     function onButtonClickHandler(action) { //Generate, Cycle, StartL, Stop, Clear
         switch(action) {
-            case 'Generate': 
-                const next = generateField();
-                setFieldArray(next);
-                break;
+            case 'Generate': generateField(); break;
             case 'Cycle': oneCycle(); break;
             case 'StartL': startEvo(); break;
             case 'Stop': stopEvo(); break;
             case 'Clear': clearField(); break;
             default: break;
+        }
+    }
+
+    function fieldReducer(fieldArray, action) {
+        switch (action.type) {
+            case 'changed': {
+                return action.nfa.map(row => row.slice());
+            }
+            default: {
+                console.log('Something went wrong');
+                throw Error('Unknown action: ' + action.type);
+            }
         }
     }
 
@@ -79,7 +86,10 @@ export default function App() {
         nextFieldArray.push(fieldArrayRow);
         }
         if(!isGenerated) setIsGenerated(true);
-        return nextFieldArray;
+        dispatch({
+            type: 'changed',
+            nfa: nextFieldArray,
+        });
     }
 
     function oneCycle() {
@@ -119,10 +129,7 @@ export default function App() {
                 cellNeighbours.push(fieldArray[row][b]);    // +1  0
                 cellNeighbours.push(fieldArray[d][b]);      // +1 +1
 
-                for (cell = 0; cell < 8; cell++) {
-                    if (cellNeighbours[cell] === 'alive') aliveCounter++; // checking and counting alive neighbours
-                    if (aliveCounter>  3) break; // no point count further so we break
-                }
+                aliveCounter = cellNeighbours.filter(item => {return item === 'alive';}).length
 
                 //applying rules. If alive and <2 and >3 - dead. If 2 or 3 and alive - lives. If 3 and dead - alive
                 if (curStatus === 'alive') {
@@ -141,21 +148,33 @@ export default function App() {
         }
     gens++;
     setDashCounters({gens: gens, deaths: deaths, survs: survs, births: births});
-    setFieldArray(nextFieldArray);
+    dispatch({
+        type: 'changed',
+        nfa: nextFieldArray,
+    });
     }
 
     function startEvo() {
-        console.log('nothing happens here yet!');
+        if (!isRunning) {
+            setIsRunning(true);
+        }
     }
 
-    function stopEvo() {
-        console.log('nothing happens here too!');
+    function stopEvo() {    
+        if (isRunning) {
+            setIsRunning(false);
+        }
     }
 
     function clearField() {
         const {sizeX, sizeY} = fieldParams;
         const nextFieldArray = Array(parseInt(sizeY)).fill(Array(parseInt(sizeX)).fill('dead'));
-        setFieldArray(nextFieldArray);
+
+        dispatch({
+            type: 'changed',
+            nfa: nextFieldArray,
+        });
+        
         setDashCounters({gens: 0, deaths: 0, survs: 0, births: 0});
     }
 
@@ -187,18 +206,42 @@ export default function App() {
         }
     }
 
+    function Field({data, onClick}) {
+        if (isRunning) useInterval(oneCycle, fieldParams.evolS);
+        else useInterval(oneCycle, null);
+
+        return (
+            <table className='field' id='field'><tbody>
+                {data.map((row, rowIndex) => {return (
+                    <tr id={rowIndex} key={'row' + rowIndex}>
+                        {row.map((column, colIndex) => {return (
+                            <td
+                                key={colIndex.toString().padStart(2, '0') + rowIndex.toString().padStart(2, '0')}
+                                className={column}
+                                id={colIndex.toString().padStart(2, '0') + rowIndex.toString().padStart(2, '0')}
+                                onClick={onClick}
+                            >
+                            </td>
+                             )})}
+                    </tr>
+                )})}
+            </tbody></table>
+        );
+    }
+
     return (
         <div className='content'>
             <Header onClick={onHelpClickHandler} />
             <Container className='content__nav' id='nav'>
                 <Inputs 
-                    disabled={cycleIntervalId}
+                    disabled={isRunning}
                     fieldParams={fieldParams}
                     onChange={(event) => onInputChangeHandler(event)}
                 />
                 <div className="nav__list--line"></div>
                 <Buttons 
-                    disabled={!isGenerated} 
+                    isgenerated={isGenerated}
+                    isrunning={isRunning}
                     onClick={(event) => onButtonClickHandler(event.target.name)}
                 />
                 <div className="nav__list--line"></div>
